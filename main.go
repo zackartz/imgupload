@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	"log"
 	"math/rand"
 	"net/http"
@@ -20,6 +21,8 @@ func main() {
 	app := fiber.New(fiber.Config{
 		Prefork: *prod,
 	})
+
+	app.Use(cors.New())
 
 	app.Post("/img/upload", func(ctx *fiber.Ctx) error {
 		file, err := ctx.FormFile("document")
@@ -44,6 +47,35 @@ func main() {
 
 		return ctx.JSON(fiber.Map{
 			"url": fmt.Sprintf("https://img.zackmyers.io/%s", url),
+		})
+	})
+
+	app.Post("/api/upload", func(ctx *fiber.Ctx) error {
+		file, err := ctx.FormFile("document")
+		if err != nil {
+			return err
+		}
+
+		err = os.Mkdir("img", 0755)
+		if err != nil {
+			log.Println(err)
+		}
+
+		url := RandStringRunes(7)
+
+		err = ctx.SaveFile(file, fmt.Sprintf("./img/%s", url))
+		if err != nil {
+			ctx.Status(http.StatusInternalServerError)
+			ctx.JSON(fiber.Map{
+				"error": err.Error(),
+			})
+		}
+
+		return ctx.JSON(fiber.Map{
+			"success": 1,
+			"file": fiber.Map{
+				"url": fmt.Sprintf("https://img.zackmyers.io/%s", url),
+			},
 		})
 	})
 
